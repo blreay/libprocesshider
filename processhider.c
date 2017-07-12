@@ -17,7 +17,7 @@ char owner[128];
  * Every process with this name will be excluded
  */
 static char* g_showall = NULL;
-static char* g_dbg = NULL;
+static int g_iShowAll = -1;
 static const char* process_to_filter[] = {
 "wineserver",
 "QQ.exe",
@@ -52,7 +52,7 @@ static int get_dir_name(DIR* dirp, char* buf, size_t size)
     return 1;
 }
 
-void DEBUG(char *fmt, ...) {
+static void DEBUG(char *fmt, ...) {
     char buf[1024 * 2] = { '\0' };
     char *jestrace;
     static int trace_init = -1;
@@ -80,7 +80,7 @@ void DEBUG(char *fmt, ...) {
 static int isToHide(PSINFO* ps)
 {
 	DEBUG("isToHide: dirname_in=%s", ps->pname);
-	if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
+	//if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
 	int i=0;
 	while (process_to_filter[i] != NULL) {
 		DEBUG("ps->pname=%s process_to_filter[%d]=%s", ps->pname, i, process_to_filter[i]);
@@ -125,12 +125,13 @@ static struct dirent* (*original_##readdir)(DIR*) = NULL;               \
                                                                         \
 struct dirent* readdir(DIR *dirp)                                       \
 {                                                                       \
-	g_showall=getenv("MYDBG_SHOWALL");                                  \
-	g_dbg=getenv("MYDBG_SHOWDBG");                                      \
+	if (-1 == g_iShowAll) {                                            \
+		g_showall=getenv("MYDBG_SHOWALL");                             \
+	    g_iShowAll=(NULL != g_showall && strcmp(g_showall, "yes") == 0 )?1:0;       \
+	}                                                                   \
     if(original_##readdir == NULL) {                                    \
         original_##readdir = dlsym(RTLD_NEXT, "readdir");               \
-        if(original_##readdir == NULL)                                  \
-        {                                                               \
+        if(original_##readdir == NULL) {                                \
             fprintf(stderr, "Error in dlsym: %s\n", dlerror());         \
         }                                                               \
     }                                                                   \
@@ -140,7 +141,7 @@ struct dirent* readdir(DIR *dirp)                                       \
     while(1)                                                            \
     {                                                                   \
         dir = original_##readdir(dirp);                                 \
-        if(dir) {                                                       \
+        if(g_iShowAll != 1 && dir) {                                    \
             char dir_name[256];                                         \
 			memset(&ps, sizeof(ps), 0x0);                               \
             if(get_dir_name(dirp, dir_name, sizeof(dir_name)) &&        \
