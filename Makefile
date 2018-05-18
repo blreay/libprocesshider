@@ -4,8 +4,8 @@ libprocesshider.so: processhider.c
 	gcc -m64 -Wall -fPIC -shared -o libprocesshider.so processhider.c -ldl
 	strip $@
 
-libprocesshider32.so: processhider.c
-	gcc -m32 -Wall -fPIC -shared -o libprocesshider32.so processhider.c -ldl
+libprocesshider32.so: processhider32.c
+	gcc -m32 -Wall -fPIC -shared -o libprocesshider32.so $< -ldl
 	strip $@
 
 .PHONY clean:
