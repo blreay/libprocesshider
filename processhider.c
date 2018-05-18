@@ -15,11 +15,6 @@ typedef struct psinfo {
 } PSINFO;
 /*
  * Every process with this name will be excluded
- */
-static char* g_showall = NULL;
-static int g_iShowAll = -1;
-static const char* process_to_filter[] = {
-"wineserver",
 "QQ.exe",
 "WeChat.exe",
 "WeChatWeb.exe",
@@ -29,6 +24,11 @@ static const char* process_to_filter[] = {
 "plugplay.exe",
 "winedevice.exe",
 "rundll32.exe",
+ */
+static char* g_showall = NULL;
+static int g_iShowAll = -1;
+static const char* process_to_filter[] = {
+"wineserver",
 "xpra",
 NULL
 };

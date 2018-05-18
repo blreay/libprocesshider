@@ -15,11 +15,6 @@ typedef struct psinfo {
 } PSINFO;
 /*
  * Every process with this name will be excluded
- */
-static char* g_showall = NULL;
-static int g_iShowAll = -1;
-/*
-.exe and .com are all excluded
 "QQ.exe",
 "WeChat.exe",
 "WeChatWeb.exe",
@@ -29,16 +24,10 @@ static int g_iShowAll = -1;
 "plugplay.exe",
 "winedevice.exe",
 "rundll32.exe",
-*/
+ */
+static char* g_showall = NULL;
+static int g_iShowAll = -1;
 static const char* process_to_filter[] = {
-"QQ.exe",
-"WeChat.exe",
-"WeChatWeb.exe",
-"explorer.exe",
-"services.exe",
-"winedevice.exe",
-"plugplay.exe",
-"winedevice.exe",
 "wineserver",
 "xpra",
 NULL
@@ -96,7 +85,7 @@ static int isToHide(PSINFO* ps)
 	//if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
 	// .exe or .com return directly
 	int n=strlen(ps->pname);
-	if (0 && n >=5) {
+	if (n >=5) {
 		if (0 == strcasecmp(ps->pname+n-4, ".exe") || 0 == strcasecmp(ps->pname+n-4, ".com")) {
 			DEBUG("-%s %s", ps->pid, ps->pname);
 			return 1;
@@ -182,5 +171,5 @@ struct dirent* readdir(DIR *dirp)                                       \
     return dir;                                                         \
 }
 
-DECLARE_READDIR(dirent64, zzzreaddir64);
-DECLARE_READDIR(dirent, zzzreaddir);
+DECLARE_READDIR(dirent64, zzz_readdir64);
+DECLARE_READDIR(dirent, zzz_readdir);
