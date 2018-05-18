@@ -9,9 +9,9 @@
 #include <stdarg.h>
 
 typedef struct psinfo {
-char pid[32];;
-char pname[1024];
-char owner[128];
+	char pid[32];;
+	char pname[1024];
+	char owner[128];
 } PSINFO;
 /*
  * Every process with this name will be excluded
@@ -22,15 +22,17 @@ static const char* process_to_filter[] = {
 "wineserver",
 "QQ.exe",
 "WeChat.exe",
+"WeChatWeb.exe",
 "explorer.exe",
 "services.exe",
 "winedevice.exe",
 "plugplay.exe",
 "winedevice.exe",
+"rundll32.exe",
+"xpra",
 NULL
 };
 
-PSINFO ps;
 /*
  * Get a directory name given a DIR* handle
  */
@@ -41,7 +43,7 @@ static int get_dir_name(DIR* dirp, char* buf, size_t size)
         return 0;
     }
 
-    char tmp[64];
+    char tmp[256];
     snprintf(tmp, sizeof(tmp), "/proc/self/fd/%d", fd);
     ssize_t ret = readlink(tmp, buf, size);
     if(ret == -1) {
@@ -69,7 +71,7 @@ static void DEBUG(char *fmt, ...) {
         va_start(args, fmt);
         vsnprintf(buf, sizeof(buf), fmt, args);
         va_end(args); 
-        printf("DEBUG:%s\n", buf);
+        fprintf(stderr, "[glibc]:%s\n", buf);
     }
 }
 
@@ -79,12 +81,23 @@ static void DEBUG(char *fmt, ...) {
  */
 static int isToHide(PSINFO* ps)
 {
-	DEBUG("isToHide: dirname_in=%s", ps->pname);
+	//DEBUG("isToHide: dirname_in=%s", ps->pname);
 	//if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
+	// .exe or .com return directly
+	int n=strlen(ps->pname);
+	if (n >=5) {
+		if (0 == strcasecmp(ps->pname+n-4, ".exe") || 0 == strcasecmp(ps->pname+n-4, ".com")) {
+			DEBUG("-%s %s", ps->pid, ps->pname);
+			return 1;
+		}
+	}
+
+	// search array
 	int i=0;
 	while (process_to_filter[i] != NULL) {
-		DEBUG("ps->pname=%s process_to_filter[%d]=%s", ps->pname, i, process_to_filter[i]);
+		//DEBUG("ps->pname=%s process_to_filter[%d]=%s", ps->pname, i, process_to_filter[i]);
 		if (strcmp(ps->pname, process_to_filter[i]) == 0 ) {
+			DEBUG("%s %s", ps->pid, ps->pname);
 			return 1;
 		}
 		i++;
@@ -117,6 +130,7 @@ static int get_process_info(char* pid, PSINFO* ps)
 
     int unused;
     sscanf(tmp, "%d (%[^)]s", &unused, ps->pname);
+	strcpy(ps->pid, pid);
     return 1;
 }
 
@@ -142,7 +156,8 @@ struct dirent* readdir(DIR *dirp)                                       \
     {                                                                   \
         dir = original_##readdir(dirp);                                 \
         if(g_iShowAll != 1 && dir) {                                    \
-            char dir_name[256];                                         \
+            char dir_name[4096];                                        \
+			PSINFO ps;                                                  \
 			memset(&ps, sizeof(ps), 0x0);                               \
             if(get_dir_name(dirp, dir_name, sizeof(dir_name)) &&        \
                 strcmp(dir_name, "/proc") == 0 &&                       \
