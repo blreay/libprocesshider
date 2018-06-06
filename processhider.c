@@ -30,8 +30,26 @@ static int g_iShowAll = -1;
 static const char* process_to_filter[] = {
 "wineserver",
 "xpra",
+"Xorg",
+"Xorg-nosuid",
 NULL
 };
+
+/* Find the first occurrence in S of any character in ACCEPT.  */
+static char * _my_strrpbrk (s, accept)
+     const char *s;
+     const char *accept;
+{
+	char* base=s;
+	int baselen=strlen(base);
+  while (*s != '\0') {
+	  const char *rs = base+baselen - (s-base);
+      const char *a = accept;
+      while (*a != '\0') if (*a++ == *rs) return (char *) (rs+1);
+      ++s;
+    }
+  return NULL;
+}
 
 /*
  * Get a directory name given a DIR* handle
@@ -81,7 +99,7 @@ static void DEBUG(char *fmt, ...) {
  */
 static int isToHide(PSINFO* ps)
 {
-	//DEBUG("isToHide: dirname_in=%s", ps->pname);
+	DEBUG("isToHide: dirname_in=%s", ps->pname);
 	//if (NULL != g_showall && strcmp(g_showall, "yes") == 0 ) return 0;
 	// .exe or .com return directly
 	int n=strlen(ps->pname);
@@ -113,8 +131,9 @@ static int get_process_info(char* pid, PSINFO* ps)
         return 0;
     }
 
-    char tmp[1024];
-    snprintf(tmp, sizeof(tmp), "/proc/%s/stat", pid);
+    char tmp[4096]; 
+	//snprintf(tmp, sizeof(tmp), "/proc/%s/stat", pid);
+    snprintf(tmp, sizeof(tmp), "/proc/%s/cmdline", pid);
  
     FILE* f = fopen(tmp, "r");
     if(f == NULL) {
@@ -127,10 +146,16 @@ static int get_process_info(char* pid, PSINFO* ps)
     }
 
     fclose(f);
+	DEBUG("read buf: %s", tmp);
 
     int unused;
-    sscanf(tmp, "%d (%[^)]s", &unused, ps->pname);
+    //sscanf(tmp, "%d (%[^)]s", &unused, ps->pname);
+	// fine the last slash or backslash 
+	char* p=_my_strrpbrk(tmp, "/\\");
+	DEBUG("read buf p1: %s", p);
+	strcpy(ps->pname, p==NULL?tmp:p);
 	strcpy(ps->pid, pid);
+	DEBUG("read buf p: %s", p==NULL?tmp:p);
     return 1;
 }
 
