@@ -40,10 +40,10 @@ static char * _my_strrpbrk (s, accept)
      const char *s;
      const char *accept;
 {
-	char* base=s;
+	const char* base=s;
 	int baselen=strlen(base);
-  while (*s != '\0') {
-	  const char *rs = base+baselen - (s-base);
+  	while (*s != '\0') {
+	  const char *rs = base + baselen - (s-base);
       const char *a = accept;
       while (*a != '\0') if (*a++ == *rs) return (char *) (rs+1);
       ++s;
@@ -73,9 +73,11 @@ static int get_dir_name(DIR* dirp, char* buf, size_t size)
 }
 
 static void DEBUG(char *fmt, ...) {
+    static int trace_init = -1;
+	if (0 == trace_init) return;
+
     char buf[1024 * 2] = { '\0' };
     char *jestrace;
-    static int trace_init = -1;
     va_list args;
 
     if (trace_init == -1) {
@@ -148,14 +150,13 @@ static int get_process_info(char* pid, PSINFO* ps)
     fclose(f);
 	DEBUG("read buf: %s", tmp);
 
-    int unused;
+    //int unused;
     //sscanf(tmp, "%d (%[^)]s", &unused, ps->pname);
 	// fine the last slash or backslash 
 	char* p=_my_strrpbrk(tmp, "/\\");
-	DEBUG("read buf p1: %s", p);
 	strcpy(ps->pname, p==NULL?tmp:p);
 	strcpy(ps->pid, pid);
-	DEBUG("read buf p: %s", p==NULL?tmp:p);
+	DEBUG("read cmdline: %s", ps->pname);
     return 1;
 }
 
